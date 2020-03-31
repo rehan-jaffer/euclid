@@ -1,2 +1,3 @@
 /target
 **/*.rs.bk
+gba_bios.bin
