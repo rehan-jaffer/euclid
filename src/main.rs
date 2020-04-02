@@ -1,30 +1,14 @@
-use std::io;
-use std::io::prelude::*;
-use std::fs::File;
-
-mod cpu;
-mod mmu;
-
-impl Emulator {
-  fn load(&mut self, filename: &str) {
-    let mut f = File::open(&filename).expect("no file found");
-    let mut rom : Vec<u8> = Vec::new();
-    f.read(&mut rom).expect("buffer overflow");
-    &self.mmu.load(rom);
-  }
-
-  fn boot() {
-
-  }
-}
-
-#[derive(Default)]
-struct Emulator {
-    cpu: cpu::CPU,
-    mmu: mmu::MMU
-}
+mod emulator;
 
 fn main() {
-    let mut emulator : Emulator = Default::default();
+    let mmu = emulator::mmu::MMU { bios: Vec::new(), booting: true, eram: Vec::new(), wram: Vec::new(), rom: Vec::new(), zram: Vec::new() };
+    let cpu = emulator::cpu::CPU { a: 0, b:0, c:0, d:0, e:0, h:0, l:0, clock_m: 0, clock_t: 0, f: 0, sp: 0, pc: 0 };
+    let mut emulator = emulator::Emulator { 
+        cpu: cpu,
+        mmu: mmu,
+        running: true
+    };
     emulator.load(&"cpu_instrs.gb");
+    emulator.loadBIOS();
+    emulator.boot();
 }
