@@ -32,6 +32,25 @@ impl MMU {
       return word;
     }
 
+    pub fn wb(&mut self, addr : u16, value : u8) {
+        // mask the address and find the correct memory mapped region to read from
+        match (addr & BITMASK) {
+          0x0000 => {
+            if (self.booting) {
+                self.bios[addr as usize] = value;
+            }
+            self.rom[addr as usize] = value;
+          },
+          0x1000 | 0x2000 | 0x3000 => {
+              self.rom[addr as usize] = value;
+          },
+          0x4000 | 0x5000 | 0x6000 | 0x7000 => {
+              self.rom[addr as usize] = value;
+          },
+          _ => { }
+        }      
+    }
+
     pub fn load(&mut self, bytes: Vec<u8>) {
       self.rom = bytes.clone();
     }

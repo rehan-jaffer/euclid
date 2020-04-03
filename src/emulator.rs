@@ -35,7 +35,7 @@ impl Emulator {
   
     pub fn boot(&mut self) {
       while (self.running == true) {
-        self.cpu.exec(&self.mmu)
+        self.cpu.exec(&mut self.mmu)
       }
     }
   }
