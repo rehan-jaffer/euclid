@@ -35,6 +35,8 @@ impl<'a> Emulator<'a> {
   }
   
     pub fn boot(&mut self) {
+      print!("* Starting Euclid (A Gameboy emulator in Rust)\r\n");
+      print!("* Booting BIOS...\r\n");
       while (self.running == true) {
         self.cpu.exec()
       }

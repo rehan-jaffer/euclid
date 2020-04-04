@@ -14,45 +14,53 @@ pub struct Flags {
 const NOP : u8 = 0x0;
 const LD_SP : u8 = 0x31;
 const XOR_A : u8 = 0xAF;
-const JR_NZ : u8 = 0x21;
-const LD_HL_DA : u8 = 0x32;
+const JR_NZ : u8 = 0x20;
+const LD_HL_NN : u8 = 0x21;
 const LDRR_AH : u8 = 0x7c;
+const LD_HL_DA : u8 = 0x32;
 
 impl<'a> CPU<'a> {
   pub fn exec(&mut self) {
       
       let instr = self.mmu.rb(self.pc);
+      self.view_position_count();
+
       self.pc += 1;
 
       let panic_and_die = || -> () { print!("unimplemented opcode 0x{:x?} {:x?} {:x?}, send help!\r\n", instr, self.mmu.rb(self.pc+1), self.mmu.rb(self.pc+2)); std::process::exit(0); };
 
       match instr {
-        LD_SP => { self.sp = self.mmu.rw(self.pc); self.pc += 2; self.m = 3; },
-        XOR_A => { self.a ^= self.a; self.m = 1; },
-        LD_HL_DA => { self.mmu.wb((((self.h as u16) << 8) as u16)+(self.l as u16), self.a); self.m=2; },
-        LDRR_AH => { self.a = self.h; self.m = 1; }
+        LD_SP => { self.sp = self.mmu.rw(self.pc); self.pc += 2; self.m = 3; self.debug("LD_SP"); },
+        XOR_A => { self.a ^= self.a; self.m = 1; self.debug("XOR_A"); },
+        LD_HL_DA => { self.mmu.wb((((self.h as u16) << 8) as u16)+(self.l as u16), self.a); self.m=2; self.pc += 2; self.debug("LD_HL_DA"); },
+        LD_HL_NN => { self.l=self.mmu.rb(self.pc);self.h=self.mmu.rb(self.pc+1); self.pc+=2; self.m=3; self.debug("LD_HL_NN") }
+        LDRR_AH => { self.a = self.h; self.m = 1; self.debug("LDRR_AH"); }
         JR_NZ => {
+          self.debug("JR_NZ");
           if (self.flags.zero == true) {
             self.pc = self.mmu.rb(self.pc as u16) as u16;
           } else {
             self.pc += 1;
-          }
          }
-         CB_PREFIX => {
-          print!("");
-          match self.mmu.rb(self.pc+1) {
-            _ => panic_and_die()
-          }
          }
         code => { panic_and_die() }
       }
 
-      self.clock_m += self.m as u32;
       self.view_registers();
+
+      self.clock_m += self.m as u32;
+  }
+
+  fn view_position_count(&mut self) {
+    print!("[{}] ", self.pc);
   }
 
   fn view_registers(&mut self) {
-    print!("CPU: a: {} b: {} c: {} d: {}, e: {}, h: {}, l: {}, f: {}, pc: {}, sp: {}\n", self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.f, self.pc, self.sp)
+    print!("CPU: [a: {}] [b: {}] [c: {}] [d: {}], [e: {}], [h: {}], [l: {}], [f: {}], [pc: {}], [sp: {}]\r\n", self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.f, self.pc, self.sp)
+  }
+
+  fn debug(&self, command : &str) {
+    print!("{}\t\t", command);
   }
 }
 
