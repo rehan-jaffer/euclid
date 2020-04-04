@@ -7,8 +7,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 pub mod cpu;
 pub mod mmu;
+pub mod gpu;
 
-impl Emulator {
+impl<'a> Emulator<'a> {
 
     pub fn load(&mut self, filename: &str) {
 
@@ -19,7 +20,7 @@ impl Emulator {
         rom.push(byte.unwrap())
       }
 
-      self.mmu.load(rom)
+      self.cpu.mmu.load(rom)
     }
   
     pub fn loadBIOS(&mut self) {
@@ -30,18 +31,17 @@ impl Emulator {
         bios.push(byte.unwrap())
       }
 
-      self.mmu.load_bios(bios);
+      self.cpu.mmu.load_bios(bios);
   }
   
     pub fn boot(&mut self) {
       while (self.running == true) {
-        self.cpu.exec(&mut self.mmu)
+        self.cpu.exec()
       }
     }
   }
   
-pub struct Emulator {
-      pub cpu: cpu::CPU,
-      pub mmu: mmu::MMU,
+pub struct Emulator<'a> {
+      pub cpu: &'a mut cpu::CPU<'a>,
       pub running : bool
 }

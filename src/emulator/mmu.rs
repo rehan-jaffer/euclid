@@ -5,7 +5,7 @@ const BITMASK : u16 = 0xF000;
   
 */
 
-impl MMU {
+impl<'a> MMU<'a> {
     pub fn rb(&self, addr : u16) -> u8 { 
       
       // mask the address and find the correct memory mapped region to read from
@@ -60,11 +60,12 @@ impl MMU {
     }
   }
   
-pub struct MMU {
+pub struct MMU<'a> {
     pub bios: Vec<u8>,
     pub rom: Vec<u8>,
     pub eram: Vec<u8>,
     pub wram: Vec<u8>,
     pub zram: Vec<u8>,
-    pub booting: bool
-}
+    pub booting: bool,
+    pub gpu: &'a mut super::gpu::GPU
+  }
