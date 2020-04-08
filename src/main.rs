@@ -2,15 +2,26 @@ mod emulator;
 
 fn main() {
 
+    let mut vram = Vec::new();
+    let mut wram = Vec::new();
+
+    for i in (0..8096) {
+        vram.push(0);
+    }
+
+    for i in (0..65536) {
+        wram.push(0);
+    }
+
     let mut gpu = emulator::gpu::GPU {
-        oam: Vec::new(), vram: Vec::new()
+        oam: Vec::new(), vram: vram.clone()
     };
 
     let mut mmu = emulator::mmu::MMU { 
         bios: Vec::new(), 
         booting: true, 
         eram: Vec::new(), 
-        wram: Vec::new(), 
+        wram: wram, 
         rom: Vec::new(), 
         zram: Vec::new(),
         gpu: &mut gpu 
@@ -26,7 +37,7 @@ fn main() {
             zero: false, 
             negative: false, 
             h: false, 
-            c: false 
+            carry: false
         } 
     };
 
