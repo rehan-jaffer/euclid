@@ -86,12 +86,20 @@ impl<'a> CPU<'a> {
           self.m=5;
           self.debug("CALL_NN");
         },
+        RET => {
+          self.pc = self.mmu.rw(self.sp);
+          self.sp += 2;
+          print!("{} {}\r\n", self.pc, self.sp);
+          self.m = 3;
+          self.debug("RET");
+        },
         LD_HL_DA => { 
           self.mmu.wb((((self.h as u16) << 8) as u16)+(self.l as u16), self.a); self.m=2;  self.debug("LD_HL_DA"); 
           self.l = if self.l == 0 { 255 } else { (self.l-1) };
           if self.l == 255  { 
             self.h=(self.h-1) & 255;
           }
+          self.debug("LD_HL_DA");
         },
         LD_HL_NN => { self.l=self.mmu.rb(self.pc+1);self.h=self.mmu.rb(self.pc+2); self.pc+=2; self.m=3; self.debug("LD_HL_NN") }
         LDRR_AH => { self.a = self.h; self.m = 1; self.debug("LDRR_AH"); }
@@ -157,11 +165,6 @@ impl<'a> CPU<'a> {
           self.m=1;
           self.debug("INC_HL");
         },
-        RET => {
-          self.pc = self.mmu.rw(self.sp);
-          self.sp += 2;
-          self.m = 3;
-        }
         CB_PREFIX => {
           match self.mmu.rb(self.pc+1) {
             BIT_7_H => {
@@ -207,12 +210,12 @@ impl<'a> CPU<'a> {
   }
 
   fn view_registers(&mut self) {
-   // print!("CPU: [a: {}] [b: {}] [c: {}] [d: {}], [e: {}], [h: {}], [l: {}], [f: {}], [pc: {}], [sp: {}]\r\n", self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.f, self.pc, self.sp)
+   print!("CPU: [a: {}] [b: {}] [c: {}] [d: {}], [e: {}], [h: {}], [l: {}], [f: {}], [pc: {}], [sp: {}]\r\n", self.a, self.b, self.c, self.d, self.e, self.h, self.l, self.f, self.pc, self.sp)
   }
 
   fn debug(&self, command : &str) {
     self.mmu.show_stack(self.sp);
-//    print!("{}\t\t", command);
+    print!("{}\t\t", command);
   }
 }
 

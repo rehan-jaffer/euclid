@@ -1,17 +1,39 @@
+extern crate clap;
+use clap::{Arg, App, SubCommand};
+
 mod emulator;
+
+const VRAM_SIZE : usize = 8096;
+const WORKING_RAM_SIZE : usize = 65536;
+
+fn init_mem(mem_size : usize) -> Vec<u8> {
+    let mut mem_vec = Vec::new();
+    for _ in (0..mem_size) {
+        mem_vec.push(0);
+    }
+    return mem_vec.clone();
+}
 
 fn main() {
 
-    let mut vram = Vec::new();
-    let mut wram = Vec::new();
+    let matches = App::new("Euclid")
+                          .version("0.001")
+                          .author("Ray <pleasedont@emailme.com>")
+                          .about("Gameboy emulator in Rust")
+                          .arg(clap::Arg::with_name("STACK")
+                               .short("s")
+                               .long("stack-debugger")
+                               .help("enables the stack debugger")
+                               .takes_value(false))
+                          .arg(clap::Arg::with_name("REGISTERS")
+                               .short("r")
+                               .long("register-debugger")
+                               .help("enables the display of CPU registers")
+                               .takes_value(false))
+                          .get_matches();
 
-    for i in (0..8096) {
-        vram.push(0);
-    }
-
-    for i in (0..65536) {
-        wram.push(0);
-    }
+    let vram = init_mem(VRAM_SIZE);
+    let wram = init_mem(WORKING_RAM_SIZE);
 
     let mut gpu = emulator::gpu::GPU {
         oam: Vec::new(), vram: vram.clone()
@@ -24,7 +46,8 @@ fn main() {
         wram: wram, 
         rom: Vec::new(), 
         zram: Vec::new(),
-        gpu: &mut gpu 
+        gpu: &mut gpu,
+        stack_debugger_enabled: matches.is_present("STACK")
     };
 
     let mut cpu = emulator::cpu::CPU { 

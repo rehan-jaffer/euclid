@@ -31,6 +31,8 @@ impl<'a> MMU<'a> {
     }
 
     pub fn show_stack(&self, stack_pointer : u16) {
+      if !self.stack_debugger_enabled { return () }
+
       print!("[{:x?}] \t[ ", stack_pointer);
       for i in (0..16) {
         let addr = 65073-i;
@@ -72,8 +74,8 @@ impl<'a> MMU<'a> {
     }
 
     pub fn ww(&mut self, addr : u16, word : u16) {
-      let first_byte = (word >> 8) as u8;
-      let second_byte = (word & 0x0f) as u8;
+      let second_byte = (word >> 8) as u8;
+      let first_byte = (word & 0x0f) as u8;
       self.wb(addr, first_byte);
       self.wb(addr+1, second_byte);
     }
@@ -94,5 +96,6 @@ pub struct MMU<'a> {
     pub wram: Vec<u8>,
     pub zram: Vec<u8>,
     pub booting: bool,
-    pub gpu: &'a mut super::gpu::GPU
+    pub gpu: &'a mut super::gpu::GPU,
+    pub stack_debugger_enabled: bool
   }
