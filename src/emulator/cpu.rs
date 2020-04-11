@@ -2,9 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::{thread, time};
 
-// registers A-F are 8-bit
-// registers PC and SP are 16-bit
-
+#[derive(Default)]
 pub struct Flags {
   pub zero : bool,
   pub negative : bool,
@@ -12,11 +10,21 @@ pub struct Flags {
   pub carry : bool
 }
 
+/* Flags for debugging */
+const SLOW_MODE : bool = false;
+
 const NOP : u8 = 0x0;
+
 const LD_BC_NN : u8 = 0x1;
+const INC_C : u8 = 0xc;
+const LD_C_BYTE : u8 = 0xe;
+const LD_B_BYTE : u8 = 0x6;
+
+const RLr_c : u8 = 0x11;
+const INC_DE : u8 = 0x13;
+const RLA : u8 = 0x17;
 
 const JR_NZ : u8 = 0x20;
-
 const LD_HL_NN : u8 = 0x21;
 const LD_HL_IA : u8 = 0x22;
 const INC_HL : u8 = 0x23;
@@ -24,35 +32,39 @@ const INC_HL : u8 = 0x23;
 const LDRR_AH : u8 = 0x7c;
 const LD_SP : u8 = 0x31;
 const LD_HL_DA : u8 = 0x32;
-const CB_PREFIX : u8 = 0xCB;
-const BIT_7_H : u8 = 0x7c;
-const SLOW_MODE : bool = false;
-const LD_C_BYTE : u8 = 0xe;
-const LD_B_BYTE : u8 = 0x6;
+
 const LD_A_BYTE : u8 = 0x3e;
-const LD_IO_CA : u8 = 0xe2;
 const LD_IO_nA : u8 = 0xe0;
-const INC_C : u8 = 0xc;
+const LD_IO_CA : u8 = 0xe2;
+
 const LD_HL_A : u8 = 0x77;
 const LDrr_ba : u8 = 0x47;
-const LD_DE_NN : u8 = 0x11;
 const INC_B : u8 = 0x4;
 const LD_ADE_m : u8 = 0x1a;
-const CALL_NN : u8 = 0xCD;
-const PUSH_BC : u8 = 0xc5;
-const RLr_c : u8 = 0x11;
-const RLA : u8 = 0x17;
-const POP_BC : u8 = 0xc1;
-const DEC_B : u8 = 0x5;
-const RET : u8 = 0xc9;
 
+const POP_BC : u8 = 0xc1;
+const PUSH_BC : u8 = 0xc5;
+const RET : u8 = 0xc9;
+const CALL_NN : u8 = 0xCD;
+
+const DEC_B : u8 = 0x5;
+const LD_A_E : u8 = 0x7b;
+const CP_N : u8 = 0xfe;
 const XOR_A : u8 = 0xAF;
+
+/* 
+*  CB Instructions
+*  The following instructions have a prefix of 0xCB 
+*/
+const CB_PREFIX : u8 = 0xCB;
+const LD_DE_NN : u8 = 0x11;
+const BIT_7_H : u8 = 0x7c;
 
 impl<'a> CPU<'a> {
   pub fn exec(&mut self) {
 
       
-      let ten_millis = time::Duration::from_millis(250);
+      let ten_millis = time::Duration::from_millis(5);
       let now = time::Instant::now();
       
       if (SLOW_MODE) {
@@ -89,7 +101,6 @@ impl<'a> CPU<'a> {
         RET => {
           self.pc = self.mmu.rw(self.sp);
           self.sp += 2;
-          print!("{} {}\r\n", self.pc, self.sp);
           self.m = 3;
           self.debug("RET");
         },
@@ -149,22 +160,52 @@ impl<'a> CPU<'a> {
         },
         LD_HL_IA => {
           self.mmu.wb(((self.h as u16)<<8) + (self.l as u16), self.a); 
-          self.l=(self.l+1)&255; 
+          let (n, _) = self.l.overflowing_add(1);
+          self.l = n;
           if(self.l == 0) {
-            self.h = (self.h+1) & 255; 
+            let (n, _) = self.h.overflowing_add(1); 
+            self.h = n;
             self.m = 2;
           }
           self.pc += 2;
           self.debug("LD_HL_IA");
         },
         INC_HL => {
-          self.l=(self.l+1) & 255; 
+          let (n, _) = self.l.overflowing_add(1);
+          self.l = n;
           if (self.l == 0) {
-            self.h=(self.h+1)&255; 
+            let (n, _) = self.h.overflowing_add(1); 
+            self.h = n;
           }
           self.m=1;
           self.debug("INC_HL");
         },
+        INC_DE => {
+          let (n, _) = self.e.overflowing_add(1);
+          self.e = n;
+          if (self.e == 0) {
+            let (n, _) = self.d.overflowing_add(1);
+            self.d = n;
+          }
+          self.m = 1;
+          self.debug("INC_DE");
+        },
+        LD_A_E => {
+          self.a = self.e;
+          self.m = 1;
+          self.debug("LD_A_E");
+        },
+        CP_N => {
+          let i = self.a;
+          let m = self.mmu.rb(self.pc+1);
+          let (i, _) = i.overflowing_sub(1);
+          self.pc += 1;
+          self.flags.negative = (i < 0);
+          self.flags.zero = (i == 0);
+          self.flags.carry = ((self.a ^ i ^ m) & 0x10) != 0;
+          self.m = 2;
+          self.debug("CP_N");
+        }
         CB_PREFIX => {
           match self.mmu.rb(self.pc+1) {
             BIT_7_H => {
@@ -218,6 +259,13 @@ impl<'a> CPU<'a> {
     print!("{}\t\t", command);
   }
 }
+
+/* 
+* Gameboy's CPU is similar to the Zilog Z80 with some minor additions and subtractions. 
+* Clockspeed 4.194 Mhz
+* Registers A, B, C, D, E, H & L are 8-bit.
+* Registers PC (Program Counter) and SP (Stack Pointer) are 16bit
+*/
 
 pub struct CPU<'a> {
     pub a: u8,

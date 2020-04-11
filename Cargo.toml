@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 "ansi_term" = "0.12.1"
 "clap" = "*"
+sdl2 = "0.31.0"
+gl = "0.10.0"

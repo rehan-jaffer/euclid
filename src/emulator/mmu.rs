@@ -4,8 +4,19 @@ use ansi_term::Colour::Green;
 use ansi_term::Style;
 
 /*
- Gameboy memory layout:
-  
+*  MMU Memory Map
+*
+* [Cartridge is loaded here]
+* [0x0000->0x4000] 16kb ROM Bank #0
+* [0x4000->0x8000] 16kb switchable ROM Bank
+*
+* [0x8000->0xA000] 8kb switchable RAM bank
+* [0xA000->0xC000] 8kb Internal RAM
+* [0xC000->0xE000] Sprite Attribute Memory (OAM)
+* [0xE000->0xFE00] Empty but usable for I/O
+* [0xFE00->0xFF4C] I/O Ports
+* [0xFF4C->0xFF80] Empty but usable for I/O
+* [0xFF80->0xFFFF] Internal RAM (stack memory etc.)
 */
 
 impl<'a> MMU<'a> {
@@ -74,10 +85,9 @@ impl<'a> MMU<'a> {
     }
 
     pub fn ww(&mut self, addr : u16, word : u16) {
-      let second_byte = (word >> 8) as u8;
-      let first_byte = (word & 0x0f) as u8;
-      self.wb(addr, first_byte);
-      self.wb(addr+1, second_byte);
+      let bytes = word.to_be_bytes();
+      self.wb(addr+1, bytes[0]);
+      self.wb(addr, bytes[1]);
     }
 
     pub fn load(&mut self, bytes: Vec<u8>) {
@@ -88,7 +98,7 @@ impl<'a> MMU<'a> {
       self.bios = bios.clone();
     }
   }
-  
+
 pub struct MMU<'a> {
     pub bios: Vec<u8>,
     pub rom: Vec<u8>,

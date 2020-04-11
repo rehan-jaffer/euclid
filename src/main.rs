@@ -1,6 +1,5 @@
 extern crate clap;
 use clap::{Arg, App, SubCommand};
-
 mod emulator;
 
 const VRAM_SIZE : usize = 8096;
@@ -71,5 +70,6 @@ fn main() {
 
     emulator.load(&"cpu_instrs.gb");
     emulator.loadBIOS();
+
     emulator.boot();
 }
