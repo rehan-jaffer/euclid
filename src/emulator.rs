@@ -1,15 +1,22 @@
 #![feature(get_mut_unchecked)]
 
-extern crate sdl2;
-extern crate gl;
 use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::time::{Duration, SystemTime};
+use std::time::{Instant};
+extern crate graphics;
+extern crate opengl_graphics;
+extern crate piston;
 pub mod cpu;
 pub mod mmu;
 pub mod gpu;
+
+extern crate piston_window;
+
+use piston_window::*;
 
 impl<'a> Emulator<'a> {
 
@@ -40,34 +47,24 @@ impl<'a> Emulator<'a> {
       print!("* Starting Euclid (A Gameboy emulator in Rust)\r\n");
       print!("* Booting BIOS...\r\n");
 
+    /*  let mut window: PistonWindow =
+      WindowSettings::new("Hello Piston!", [256, 164])
+      .exit_on_esc(true).build().unwrap();*/
 
-      let sdl = sdl2::init().unwrap();
-      let video_subsystem = sdl.video().unwrap();
-      let window = video_subsystem
-          .window("Game", 900, 700)
-          .opengl()
-          .resizable()
-          .build()
-          .unwrap();
-
-      let gl_attr = video_subsystem.gl_attr();
-
-      gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
-      gl_attr.set_context_version(4, 5);
-                    
-      let gl_context = window.gl_create_context().unwrap();
-      let mut event_pump = sdl.event_pump().unwrap();
-      let gl = gl::load_with(|s| video_subsystem.gl_get_proc_address(s) as *const std::os::raw::c_void);
-
-      unsafe {
-        gl::ClearColor(0.3, 0.3, 0.5, 1.0);
+      let mut pixels = Vec::new();
+      for i in (0..(256*164)) {
+        if (i % 7) == 0 {
+          pixels.push(1);
+        } else {
+          pixels.push(0);
+        }
       }
 
+  //    let mut screen = Screen { window: &mut window, width: 246, height: 164, pixels: pixels.clone() };
+      let time = Instant::now();
+
       while (self.running == true) {
-        for _event in event_pump.poll_iter() {
-            // handle user input here
-        }
-        self.cpu.exec()
+        self.cpu.exec();
       }
     }
   }
@@ -75,4 +72,35 @@ impl<'a> Emulator<'a> {
 pub struct Emulator<'a> {
       pub cpu: &'a mut cpu::CPU<'a>,
       pub running : bool
+}
+
+pub struct Screen<'a> {
+  width: u32,
+  height: u32,
+  pixels: Vec<u8>,
+  window: &'a mut PistonWindow
+}
+
+impl<'a> Screen<'a> {
+ 
+
+  fn draw(&mut self) {
+    let width = self.width;
+    let height = self.height;
+    let pixels = &mut self.pixels;
+    let e = self.window.next().unwrap();
+    self.window.draw_2d(&e, |context, graphics, _device| {
+      clear([1.0; 4], graphics);
+      for x in (0..width-1) {
+        for y in (0..height-1) {
+          let val = pixels[(((x*height)+width)-1) as usize] as f32;
+          rectangle([val, val, val, 1.0], // red
+            [x as f64, y as f64, (x+1) as f64, (y+1) as f64],
+            context.transform,
+            graphics);
+        }
+      }
+    });
+  }
+
 }

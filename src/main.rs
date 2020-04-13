@@ -2,7 +2,7 @@ extern crate clap;
 use clap::{Arg, App, SubCommand};
 mod emulator;
 
-const VRAM_SIZE : usize = 8096;
+const VRAM_SIZE : usize = 65536;
 const WORKING_RAM_SIZE : usize = 65536;
 
 fn init_mem(mem_size : usize) -> Vec<u8> {

@@ -1,6 +1,14 @@
-use std::cell::RefCell;
-use std::rc::Rc;
 use std::{thread, time};
+
+/* 
+* CPU Flags 
+* Made the decision to use a struct with separate flags rather
+* than fiddling with an F register using bitwise ops. Time will tell whether this was a good idea.
+* Zero Flag (Z) - Set to 1 when the result of a math operation is zero or two values match when using the CP instruction, else zero
+* Subtract Flag (N) - Set to 1 if a subtraction was performed in the last math instruction
+* Half Carry Flag (H) - Set to 1 if a carry occured from the lower nibble in the last math operation
+* Carry Flag (C) - Set to 1 if a carry occured from the last math operation or if A is the smaller value when using the CP instruction
+*/
 
 #[derive(Default)]
 pub struct Flags {
@@ -239,6 +247,7 @@ impl<'a> CPU<'a> {
   }
 
   fn panic_and_die(&mut self, instr : u8) {
+    self.mmu.gpu.dump_vram();
     print!("unimplemented opcode 0x{:x?} {:x?} {:x?}, send help!\r\n", instr, self.mmu.rb(self.pc+1), self.mmu.rb(self.pc+2)); std::process::exit(0);
   }
 
