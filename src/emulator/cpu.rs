@@ -49,6 +49,9 @@ const LD_HL_A : u8 = 0x77;
 const LDrr_ba : u8 = 0x47;
 const INC_B : u8 = 0x4;
 const LD_ADE_m : u8 = 0x1a;
+const LD_MM_A : u8 = 0xea;
+//const CALL_NN : u8 = 0x3d;
+const DECr_A : u8 = 0x3d;
 
 const POP_BC : u8 = 0xc1;
 const PUSH_BC : u8 = 0xc5;
@@ -59,7 +62,9 @@ const DEC_B : u8 = 0x5;
 const LD_A_E : u8 = 0x7b;
 const CP_N : u8 = 0xfe;
 const XOR_A : u8 = 0xAF;
-
+const JR_Zn : u8 = 0x28;
+const DECr_C : u8 = 0xd;
+const ADDHLDE : u8 = 0x19;
 /* 
 *  CB Instructions
 *  The following instructions have a prefix of 0xCB 
@@ -85,26 +90,55 @@ impl<'a> CPU<'a> {
       let panic_and_die = || -> () {  };
 
       match instr {
-        LD_SP => { self.sp = self.mmu.rw(self.pc); self.pc += 2; self.m = 3; self.debug("LD_SP"); },
-        LD_C_BYTE => { self.c = self.mmu.rb(self.pc+1); self.pc += 1; self.m = 2; self.debug("LD_C_NN"); },
-        LD_A_BYTE => { self.a = self.mmu.rb(self.pc+1); self.pc += 1; self.m = 2; self.debug("LD_A_NN"); },
-        LD_B_BYTE => { self.b = self.mmu.rb(self.pc+1); self.pc += 1; self.m = 2; self.debug("LD_B_NN"); },
+        LD_SP => {
+          /* Set the stack pointer to a specified value */ 
+          self.sp = self.mmu.rw(self.pc+1); 
+          self.pc += 2; 
+          self.m = 3; 
+          self.debug(&format!("Registers[SP] = 0x{:x}", self.sp)); },
+        LD_C_BYTE => { 
+          /* Set the C register to a specific value */
+          self.c = self.mmu.rb(self.pc+1); 
+          self.pc += 1; 
+          self.m = 2; 
+          self.debug(&format!("Registers[C] = 0x{:x} ; LD_C_BYTE", self.c)); 
+        },
+        LD_A_BYTE => { 
+          /* Set the A register to a specific value */
+          self.c = self.mmu.rb(self.pc+1); 
+          self.pc += 1; 
+          self.m = 2; 
+          self.debug(&format!("Registers[A] = 0x{:x} ; LD_A_BYTE", self.a)); 
+        },
+        LD_B_BYTE => { 
+          self.b = self.mmu.rb(self.pc+1); 
+          self.pc += 1; 
+          self.m = 2; 
+          self.debug(&format!("Registers[B] = 0x{:x} ; LD_B_BYTE", self.b)); 
+        },
         LD_IO_CA => { self.mmu.wb((0xFF00+self.c as u16) as u16, self.a); self.m = 2; self.debug("LD_IO_CA") },
         LD_IO_nA => { self.mmu.wb((0xFF00+self.mmu.rb(self.pc+1) as u16) as u16, self.a); self.m = 2; self.pc += 1; self.debug("LD_IO_nA") },
         LDrr_ba => { self.b = self.a; self.m += 1; self.debug("LDrr_ba"); },
         LD_BC_NN => {  self.c = self.mmu.rb(self.pc+1); self.b = self.mmu.rb(self.pc + 2); self.pc += 2; self.debug("LD_DE_NN") },
         LD_DE_NN => {  self.e = self.mmu.rb(self.pc+1); self.d = self.mmu.rb(self.pc + 2); self.pc += 2; self.debug("LD_DE_NN") },
-        INC_C => { self.c += 1; self.debug("INC_C"); },
-        XOR_A => { self.a ^= self.a; self.m = 1; self.debug("XOR_A"); },
+        INC_C => { 
+          self.c += 1; 
+          self.debug("Registers[C]++ ; INC_C"); 
+        },
+        XOR_A => { 
+          self.a ^= self.a; 
+          self.m = 1; 
+          self.debug("Registers[A] = 0 ; XOR_A"); },
         LD_ADE_m => { self.a=self.mmu.rb(((self.d as u16)<<8)+self.e as u16); self.m=2; self.debug("LD_ADE_m") },
         LD_HL_A => { self.mmu.wb((((self.h as u16) << 8) as u16)+(self.l as u16), self.a); self.m=2; self.pc += 2; self.debug("LD_HL_A"); },
         INC_B => { self.b += 1; self.b &= 255; if (self.b == 0) { self.flags.zero = true; } self.debug("INC B") },
         CALL_NN => {
+          /* Call function at specified memory location */
           self.sp-=2; 
           self.mmu.ww(self.sp,self.pc+2); 
           self.pc = self.mmu.rw(self.pc+1); 
           self.m=5;
-          self.debug("CALL_NN");
+          self.debug(&format!("CALL #{}", self.pc));
         },
         RET => {
           self.pc = self.mmu.rw(self.sp);
@@ -113,17 +147,21 @@ impl<'a> CPU<'a> {
           self.debug("RET");
         },
         LD_HL_DA => { 
-          self.mmu.wb((((self.h as u16) << 8) as u16)+(self.l as u16), self.a); self.m=2;  self.debug("LD_HL_DA"); 
+
+          let hl = ((self.h as u16) << 8) as u16+(self.l as u16);
+          self.mmu.wb((((self.h as u16) << 8) as u16)+(self.l as u16), self.a); self.m=2;
+
           self.l = if self.l == 0 { 255 } else { (self.l-1) };
           if self.l == 255  { 
             self.h=(self.h-1) & 255;
           }
-          self.debug("LD_HL_DA");
+          self.debug(&format!("*(0x{:x}:{}) = 0x{:x}", hl, self.mmu.mem_region(hl), self.a));
+
         },
         LD_HL_NN => { self.l=self.mmu.rb(self.pc+1);self.h=self.mmu.rb(self.pc+2); self.pc+=2; self.m=3; self.debug("LD_HL_NN") }
         LDRR_AH => { self.a = self.h; self.m = 1; self.debug("LDRR_AH"); }
         JR_NZ => {
-          self.debug("JR_NZ");
+          let target = self.mmu.rb(self.pc+1) as i8;
           if (self.flags.zero == false) {
             let target = self.mmu.rb(self.pc+1) as i8;
             let pc = self.pc as i16;
@@ -132,6 +170,8 @@ impl<'a> CPU<'a> {
           } else {
             self.set_pc(self.pc+1);
          }
+         let jumped = if self.flags.zero == true { "Y"} else { "N" };
+         self.debug(&format!("[{}] JUMP +{:x} IF NOT ZERO", jumped, target))
         },
         PUSH_BC => {
           self.sp -= 1; 
@@ -140,7 +180,7 @@ impl<'a> CPU<'a> {
           self.mmu.wb(self.sp,self.c); 
           self.m=3;
           print!("=> ");
-          self.debug("PUSH_BC");
+          self.debug(&format!("PUSH 0x{:x} 0x{:x} ONTO STACK", self.b, self.c))
         },
         POP_BC => {
           self.c=self.mmu.rb(self.sp); 
@@ -149,7 +189,7 @@ impl<'a> CPU<'a> {
           self.sp += 1; 
           self.m=3;
           print!("<= ");
-          self.debug("POP_BC");
+          self.debug(&format!("Registers[B] = {}, Registers[C] = {}", self.b, self.c));
         }
         RLA => {
           let new_carry = if (self.a & 0x80 == 0) { false } else { true };
@@ -164,9 +204,11 @@ impl<'a> CPU<'a> {
           self.b &= 255;
           self.flags.zero = (self.b == 0);
           self.m=1;
-          self.debug("DEC_C")
+          self.debug(&format!("Registers[B]-- (0x{:x}) ; DEC_B", self.b))
         },
         LD_HL_IA => {
+          let hl = ((self.h as u16)<<8) + (self.l as u16);
+          self.debug(&format!("*(0x{:x}:{}) = {}", hl, self.mmu.mem_region(hl), self.a));
           self.mmu.wb(((self.h as u16)<<8) + (self.l as u16), self.a); 
           let (n, _) = self.l.overflowing_add(1);
           self.l = n;
@@ -176,8 +218,17 @@ impl<'a> CPU<'a> {
             self.m = 2;
           }
           self.pc += 2;
-          self.debug("LD_HL_IA");
         },
+        ADDHLDE => {
+          let mut hl =((self.h as u16) <<8)+self.l as u16; 
+          let (_, overflowed) = hl.overflowing_add(((self.d as u16) << 8) + self.e as u16); 
+          self.flags.carry = overflowed;
+          self.h = (hl >> 8) as u8; 
+          self.l = (hl & 255) as u8; 
+          self.m = 3;
+          self.debug("ADD HLDE");
+          self.panic_and_die(instr);
+        }
         INC_HL => {
           let (n, _) = self.l.overflowing_add(1);
           self.l = n;
@@ -213,6 +264,42 @@ impl<'a> CPU<'a> {
           self.flags.carry = ((self.a ^ i ^ m) & 0x10) != 0;
           self.m = 2;
           self.debug("CP_N");
+        },
+        LD_MM_A => {
+          self.mmu.wb(self.mmu.rw(self.pc), self.a); self.pc+=2; self.m=4;
+          self.debug("LD_MM_A");
+        },
+        CALL_NN => {
+          self.sp-=2; 
+          self.mmu.ww(self.sp, self.pc+2); 
+          self.pc=self.mmu.rw(self.pc); 
+          self.m=5;
+          self.debug("CALL_NN");
+        }
+        DECr_A => {
+          self.debug(&format!("Registers[A]--; (0x{:x?}) DECr_A", self.a));
+          let (i, zero) = self.a.overflowing_sub(1); 
+          self.a = i;
+          self.flags.zero = zero; 
+          self.m=1;
+        },
+        DECr_C => {
+          self.debug(&format!("Registers[C]--; (0x{:x?}) DECr_C", self.c));
+          let (i, zero) = self.c.overflowing_sub(1); 
+          self.c = i;
+          self.flags.zero = zero; 
+          self.m=1;
+        },
+        JR_Zn => {
+          let i = self.mmu.rb(self.pc+1) as u8;
+          self.pc += 1;
+          self.m = 2;
+          if self.flags.zero {
+            self.pc += i as u16;
+            self.m += 1;
+          }
+          let jumped = if (self.flags.zero) { "Y "} else { "N" };
+          self.debug(&format!("JUMP IF NOT ZERO [{}] [{:x}] => +{:x}", jumped, self.pc, i));
         }
         CB_PREFIX => {
           match self.mmu.rb(self.pc+1) {
@@ -227,7 +314,7 @@ impl<'a> CPU<'a> {
               if (self.c == 0) { self.flags.zero = true; } else { self.flags.zero = false; }
               self.flags.carry = new_carry;
               self.m=2; 
-              self.debug("RLr_c");
+              self.debug("ROTATE LEFT Registers[C] WITH CARRY");
               self.pc += 1;
             }
             _ => {
@@ -247,7 +334,7 @@ impl<'a> CPU<'a> {
   }
 
   fn panic_and_die(&mut self, instr : u8) {
-    self.mmu.gpu.dump_vram();
+   // self.mmu.gpu.dump_vram();
     print!("unimplemented opcode 0x{:x?} {:x?} {:x?}, send help!\r\n", instr, self.mmu.rb(self.pc+1), self.mmu.rb(self.pc+2)); std::process::exit(0);
   }
 
@@ -265,7 +352,7 @@ impl<'a> CPU<'a> {
 
   fn debug(&self, command : &str) {
     self.mmu.show_stack(self.sp);
-    print!("{}\t\t", command);
+    print!("{:<45}", command);
   }
 }
 

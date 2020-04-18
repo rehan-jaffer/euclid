@@ -60,12 +60,33 @@ impl<'a> MMU<'a> {
       return word;
     }
 
+    pub fn mem_region(&self, addr : u16) -> &str {
+      match (addr & BITMASK) {
+        0x0000 => {
+          if (addr < 256) {
+            return "BIOS";
+          }
+          return "ROM";
+        },
+        0x1000 | 0x2000 | 0x3000 => {
+          return "ROM";
+        },
+        0x4000 | 0x5000 | 0x6000 | 0x7000 => {
+          return "ROM";
+        },
+        0x8000 => {
+          return "VRAM"
+        }
+        _ => { return "WRAM" }
+      }      
+    }
+
     pub fn wb(&mut self, addr : u16, value : u8) {
 
         // mask the address and find the correct memory mapped region to read from
         match (addr & BITMASK) {
           0x0000 => {
-            if ((addr & BITMASK) < 256) {
+            if (addr < 256) {
                 self.bios[addr as usize] = value;
             }
             self.rom[addr as usize] = value;
