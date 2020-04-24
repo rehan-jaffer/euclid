@@ -1,4 +1,5 @@
 use std::{thread, time};
+use wasm_bindgen::prelude::*;
 
 /* 
 * CPU Flags 
@@ -73,19 +74,26 @@ const CB_PREFIX : u8 = 0xCB;
 const LD_DE_NN : u8 = 0x11;
 const BIT_7_H : u8 = 0x7c;
 
+#[wasm_bindgen]
+extern "C" {
+  // Use `js_namespace` here to bind `console.log(..)` instead of just
+  // `log(..)`
+  #[wasm_bindgen(js_namespace = console)]
+  fn log(s: &str);
+}
+
 impl<'a> CPU<'a> {
   pub fn exec(&mut self) {
-
       
-      let ten_millis = time::Duration::from_millis(5);
+/*      let ten_millis = time::Duration::from_millis(5);
       let now = time::Instant::now();
       
       if (SLOW_MODE) {
         thread::sleep(ten_millis);
-      }
+      }*/
 
       let instr = self.mmu.rb(self.pc);
-      self.view_position_count();
+      // self.view_position_count();
 
       let panic_and_die = || -> () {  };
 
@@ -352,7 +360,7 @@ impl<'a> CPU<'a> {
 
   fn debug(&self, command : &str) {
     self.mmu.show_stack(self.sp);
-    print!("{:<45}", command);
+//    super::postState(&format!("{:<45}", command));
   }
 }
 

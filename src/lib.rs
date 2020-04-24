@@ -1,6 +1,9 @@
-extern crate clap;
+extern crate wasm_bindgen;
+use wasm_bindgen::prelude::*;
 use clap::{Arg, App, SubCommand};
 mod emulator;
+
+use wasm_bindgen::prelude::*;
 
 const VRAM_SIZE : usize = 65536;
 const WORKING_RAM_SIZE : usize = 65536;
@@ -13,23 +16,8 @@ fn init_mem(mem_size : usize) -> Vec<u8> {
     return mem_vec.clone();
 }
 
-fn main() {
-
-    let matches = App::new("Euclid")
-                          .version("0.001")
-                          .author("Ray <pleasedont@emailme.com>")
-                          .about("Gameboy emulator in Rust")
-                          .arg(clap::Arg::with_name("STACK")
-                               .short("s")
-                               .long("stack-debugger")
-                               .help("enables the stack debugger")
-                               .takes_value(false))
-                          .arg(clap::Arg::with_name("REGISTERS")
-                               .short("r")
-                               .long("register-debugger")
-                               .help("enables the display of CPU registers")
-                               .takes_value(false))
-                          .get_matches();
+#[wasm_bindgen]
+pub fn main() {
 
     let vram = init_mem(VRAM_SIZE);
     let wram = init_mem(WORKING_RAM_SIZE);
@@ -46,7 +34,7 @@ fn main() {
         rom: Vec::new(), 
         zram: Vec::new(),
         gpu: &mut gpu,
-        stack_debugger_enabled: matches.is_present("STACK")
+        stack_debugger_enabled: false
     };
 
     let mut cpu = emulator::cpu::CPU { 
